@@ -523,9 +523,6 @@ void BlenderSession::render(BL::Depsgraph& b_depsgraph_)
 			break;
 	}
 
-	delete camera_array;
-	delete dicing_camera_array;
-
 	if(is_single_layer) {
 		BL::RenderResult b_rr = b_engine.get_result();
 		string num_aa_samples = string_printf("%d", session->params.samples);
