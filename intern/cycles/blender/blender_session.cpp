@@ -484,7 +484,7 @@ void BlenderSession::render(BL::Depsgraph& b_depsgraph_)
 
 		b_rview_name = b_view_iter->name();
 
-		/* set the current view */
+		/* Set the current view. */
 		b_engine.active_view_set(b_rview_name.c_str());
 
 		/* Make sure all views have different noise patterns. - hardcoded value just to make it random */
