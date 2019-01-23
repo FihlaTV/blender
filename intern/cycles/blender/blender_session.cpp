@@ -449,28 +449,43 @@ void BlenderSession::render(BL::Depsgraph& b_depsgraph_)
 	scene->integrator->tag_update(scene);
 
 	BL::RenderResult::views_iterator b_view_iter;
+	vector<Camera*>camera_array;
+	vector<Camera*>dicing_camera_array;
+	BL::Object b_camera_override(b_engine.camera_override());
+
 	int view_index = 0;
 	for(b_rr.views.begin(b_view_iter); b_view_iter != b_rr.views.end(); ++b_view_iter, ++view_index) {
 		b_rview_name = b_view_iter->name();
 
+		/* update scene */
+		sync->sync_camera(b_render, b_camera_override, width, height, b_rview_name.c_str());
+
+		camera_array.push_back(scene->camera);
+		dicing_camera_array.push_back(scene->dicing_camera);
+	}
+
+	sync->sync_data(b_render,
+	                b_depsgraph,
+	                b_v3d,
+	                b_camera_override,
+	                width, height,
+	                &python_thread_state);
+	builtin_images_load();
+
+	/* Attempt to free all data which is held by Blender side, since at this
+	 * point we know that we've got everything to render current view layer.
+	 */
+	free_blender_memory_if_possible();
+
+	view_index = 0;
+	for(b_rr.views.begin(b_view_iter); b_view_iter != b_rr.views.end(); ++b_view_iter, ++view_index) {
+		scene->camera = camera_array[view_index];
+		scene->dicing_camera = dicing_camera_array[view_index];
+
+		b_rview_name = b_view_iter->name();
+
 		/* set the current view */
 		b_engine.active_view_set(b_rview_name.c_str());
-
-		/* update scene */
-		BL::Object b_camera_override(b_engine.camera_override());
-		sync->sync_camera(b_render, b_camera_override, width, height, b_rview_name.c_str());
-		sync->sync_data(b_render,
-		                b_depsgraph,
-		                b_v3d,
-		                b_camera_override,
-		                width, height,
-		                &python_thread_state);
-		builtin_images_load();
-
-		/* Attempt to free all data which is held by Blender side, since at this
-		 * point we knwo that we've got everything to render current view layer.
-		 */
-		free_blender_memory_if_possible();
 
 		/* Make sure all views have different noise patterns. - hardcoded value just to make it random */
 		if(view_index != 0) {
@@ -507,6 +522,9 @@ void BlenderSession::render(BL::Depsgraph& b_depsgraph_)
 		if(session->progress.get_cancel())
 			break;
 	}
+
+	delete camera_array;
+	delete dicing_camera_array;
 
 	if(is_single_layer) {
 		BL::RenderResult b_rr = b_engine.get_result();
